@@ -144,7 +144,7 @@ scApp.controller("CSCSummary", ["$scope", "MSCApi", "$sc_utility", "$sc_nav", fu
         });
     }, 3000);
 
-    $sc_utility.log("trace", "Retrieve summary from SRS.");
+    $sc_utility.log("trace", "Retrieve summary from sPlus++.");
     $sc_utility.refresh.request(0);
 }]);
 
@@ -159,7 +159,7 @@ scApp.controller("CSCVhosts", ["$scope", "MSCApi", "$sc_nav", "$sc_utility", fun
         });
     }, 3000);
 
-    $sc_utility.log("trace", "Retrieve vhosts from SRS");
+    $sc_utility.log("trace", "Retrieve vhosts from sPlus++");
     $sc_utility.refresh.request(0);
 }]);
 
@@ -172,7 +172,7 @@ scApp.controller("CSCVhost", ["$scope", "$routeParams", "MSCApi", "$sc_nav", "$s
         $scope.vhost = data.vhost;
     });
 
-    $sc_utility.log("trace", "Retrieve vhost info from SRS");
+    $sc_utility.log("trace", "Retrieve vhost info from sPlus++");
 }]);
 
 scApp.controller("CSCStreams", ["$scope", "$location", "MSCApi", "$sc_nav", "$sc_utility", function($scope, $location, MSCApi, $sc_nav, $sc_utility){
@@ -202,20 +202,20 @@ scApp.controller("CSCStreams", ["$scope", "$location", "MSCApi", "$sc_nav", "$sc
                 for (var k in data.streams) {
                     var stream = data.streams[k];
                     stream.owner = system_array_get(vhosts, function(vhost) {return vhost.id === stream.vhost; });
+//					stream.stream_name = stream.name || stream.id || stream.stream;
                 }
-
                 $scope.streams = data.streams;
-
                 $sc_utility.refresh.request();
             });
         }, 3000);
 
-        $sc_utility.log("trace", "Retrieve streams from SRS");
+        $sc_utility.log("trace", "Retrieve streams from sPlus++");
         $sc_utility.refresh.request(0);
     });
 
-    $sc_utility.log("trace", "Retrieve vhost info from SRS");
+    $sc_utility.log("trace", "Retrieve vhost info from sPlus++");
 }]);
+
 
 scApp.controller("CSCStream", ["$scope", '$location', "$routeParams", "MSCApi", "$sc_nav", "$sc_utility", function($scope, $location, $routeParams, MSCApi, $sc_nav, $sc_utility){
     $sc_nav.in_streams();
@@ -247,15 +247,37 @@ scApp.controller("CSCStream", ["$scope", '$location', "$routeParams", "MSCApi", 
                 stream.owner = $scope.owner = vhost;
                 $scope.stream = stream;
             });
-            $sc_utility.log("trace", "Retrieve vhost info from SRS");
+            $sc_utility.log("trace", "Retrieve vhost info from sPlus++");
         } else {
             stream.owner = $scope.owner;
             $scope.stream = stream;
         }
     });
+	
 
-    $sc_utility.log("trace", "Retrieve stream info from SRS");
+    $sc_utility.log("trace", "Retrieve stream info from sPlus++");
 }]);
+
+//scApp.controller("CSCClients", ["$scope", "MSCApi", "$sc_nav", "$sc_utility", function($scope, MSCApi, $sc_nav, $sc_utility){
+//    $sc_nav.in_clients();
+//
+//    $scope.kickoff = function(client) {
+//      MSCApi.clients_delete(client.id, function(){
+//            $sc_utility.log("warn", "Kickoff client ok.");
+//        });
+//    };
+//
+//    $sc_utility.refresh.refresh_change(function(){
+//        MSCApi.clients_get(function(data){
+//            $scope.clients = data.clients;
+//
+//            $sc_utility.refresh.request();
+//        });
+//    }, 3000);
+//
+//    $sc_utility.log("trace", "Retrieve clients from sPlus++");
+//    $sc_utility.refresh.request(0);
+//}]);
 
 scApp.controller("CSCClients", ["$scope", "MSCApi", "$sc_nav", "$sc_utility", function($scope, MSCApi, $sc_nav, $sc_utility){
     $sc_nav.in_clients();
@@ -268,15 +290,40 @@ scApp.controller("CSCClients", ["$scope", "MSCApi", "$sc_nav", "$sc_utility", fu
 
     $sc_utility.refresh.refresh_change(function(){
         MSCApi.clients_get(function(data){
-            $scope.clients = data.clients;
+            // Daca API-ul nu trimite deja vhost_name si stream_name, le poți calcula aici:
+            $scope.clients = data.clients.map(function(client) {
+                // presupunem ca client.vhost este id-ul, iar client.vhost_name e numele real (daca nu, va trebui să iei info suplimentară din vhosts)
+                client.vhost_name = client.vhost_name || client.vhost; // fallback dacă nu există deja
+                client.stream_name = client.stream_name || client.stream; // fallback dacă nu există deja
+                // Dacă ai doar id-ul, trebuie să faci lookup în lista de vhosts/streams pentru nume!
+                return client;
+            });
 
             $sc_utility.refresh.request();
         });
+		
+		MSCApi.vhosts_get(function(vhostsData) {
+			var vhostMap = {};
+			vhostsData.vhosts.forEach(function(vhost){
+				vhostMap[vhost.id] = vhost.name;
+			});
+
+		MSCApi.clients_get(function(data){
+			$scope.clients = data.clients.map(function(client) {
+				client.vhost_name = vhostMap[client.vhost] || client.vhost;
+				// similar pentru stream_name dacă ai nevoie de lookup suplimentar
+				return client;
+			});
+			$sc_utility.refresh.request();
+		});
+		});
+		
     }, 3000);
 
-    $sc_utility.log("trace", "Retrieve clients from SRS");
+    $sc_utility.log("trace", "Retrieve clients from sPlus++");
     $sc_utility.refresh.request(0);
 }]);
+
 
 scApp.controller("CSCClient", ["$scope", "$routeParams", "MSCApi", "$sc_nav", "$sc_utility", function($scope, $routeParams, MSCApi, $sc_nav, $sc_utility){
     $sc_nav.in_clients();
@@ -293,7 +340,7 @@ scApp.controller("CSCClient", ["$scope", "$routeParams", "MSCApi", "$sc_nav", "$
         $scope.client = data.client;
     });
 
-    $sc_utility.log("trace", "Retrieve client info from SRS");
+    $sc_utility.log("trace", "Retrieve client info from sPlus++");
 }]);
 
 scApp.controller("CSCConfigs", ["$scope", "$location", "MSCApi", "$sc_nav", "$sc_utility", "$sc_server", function($scope, $location, MSCApi, $sc_nav, $sc_utility, $sc_server){
@@ -305,7 +352,7 @@ scApp.controller("CSCConfigs", ["$scope", "$location", "MSCApi", "$sc_nav", "$sc
         $scope.http_api = data.http_api;
     });
 
-    $sc_utility.log("trace", "Retrieve config info from SRS");
+    $sc_utility.log("trace", "Retrieve config info from sPlus++");
 }]);
 
 scApp.factory("MSCApi", ["$http", "$sc_server", function($http, $sc_server){
@@ -578,26 +625,98 @@ scApp.filter('sc_filter_preview_url', ['$sc_server', function($sc_server){
     };
 }]);
 
-scApp.filter('sc_filter_streamURL', function(){
-    return function(v){
-        if (!v || !v.url) return '';
+//scApp.filter('sc_filter_streamURL', function(){
+//    return function(v){
+//        if (!v || !v.url) return '';
+//
+//        const pos = v.url.lastIndexOf('/');
+//        const stream = pos < 0 ? '' : v.url.substr(pos);
+//
+//        // Use name or extract from url.
+//        let streamName = v.name ? v.name : stream;
+//        if (streamName && streamName.indexOf('/') !== 0) streamName = `/${streamName}`;
+//
+//        const pos2 = v.tcUrl.indexOf('?');
+//        const tcUrl = pos2 < 0 ? v.tcUrl : v.tcUrl.substr(0, pos2);
+//
+ //       let params = pos2 < 0 ? '' : v.tcUrl.substr(pos2);
+//        if (params === '?vhost=__defaultVhost__' || params === '?domain=__defaultVhost__') params = '';
+//
+//        return `${tcUrl}${streamName}${params}`;
+//    };
+//});
 
-        const pos = v.url.lastIndexOf('/');
-        const stream = pos < 0 ? '' : v.url.substr(pos);
 
-        // Use name or extract from url.
-        let streamName = v.name ? v.name : stream;
-        if (streamName && streamName.indexOf('/') !== 0) streamName = `/${streamName}`;
+scApp.filter('sc_filter_streamURL', ['$sc_server', function($sc_server) {
+    function extractPort(tcUrl, schema) {
+        if (!tcUrl) return (
+            schema === 'http' ? '80' :
+            schema === 'https' ? '443' :
+            schema === 'rtmp' ? '1935' :
+            schema === 'srt' ? '10080' :
+            schema === 'webrtc' ? '1985' : ''
+        );
+        var m = tcUrl.match(/^[\w]+:\/\/[^:\/\?]+(?::(\d+))?/);
+        if (m && m[1]) return m[1];
+        return (
+            schema === 'http' ? '80' :
+            schema === 'https' ? '443' :
+            schema === 'rtmp' ? '1935' :
+            schema === 'srt' ? '10080' :
+            schema === 'webrtc' ? '1985' : ''
+        );
+    }
 
-        const pos2 = v.tcUrl.indexOf('?');
-        const tcUrl = pos2 < 0 ? v.tcUrl : v.tcUrl.substr(0, pos2);
+    // Helper universal pt vhost name
+    function getVhostName(v) {
+        // Caută numele vhostului (nu id!)
+        if (v.owner && typeof v.owner === 'object') {
+            if (v.owner.name && v.owner.name !== '__defaultVhost__') return v.owner.name;
+            if (v.owner.vhost && v.owner.vhost !== '__defaultVhost__') return v.owner.vhost;
+        }
+        if (v.vhost && v.vhost !== '__defaultVhost__') return v.vhost;
+        return '';
+    }
 
-        let params = pos2 < 0 ? '' : v.tcUrl.substr(pos2);
-        if (params === '?vhost=__defaultVhost__' || params === '?domain=__defaultVhost__') params = '';
+    return function(v) {
+        if (!v) return '';
 
-        return `${tcUrl}${streamName}${params}`;
+        // Schema (protocol)
+        var schema = 'rtmp';
+        if (v.tcUrl && v.tcUrl.indexOf('://') > 0) {
+            schema = v.tcUrl.split('://')[0];
+        }
+
+        var ip = ($sc_server && $sc_server.host) ? $sc_server.host : (window.location.hostname || '127.0.0.1');
+        var port = extractPort(v.tcUrl, schema);
+
+        // App și stream - fallback pe mai multe chei posibile pentru compatibilitate!
+        var app = v.app || (v.stream && v.stream.app) || '';
+        var stream = v.name || v.streamName || v.stream || (v.stream && v.stream.name) || '';
+
+        // Vhost (corect, nu id!)
+        var vhost = getVhostName(v);
+
+        // Construiește URL-ul
+        var url = schema + '://' + ip;
+        if (port) url += ':' + port;
+
+        if (schema === 'srt') {
+            var streamid = '#!::r=' + app + '/' + stream;
+            if (vhost) {
+                streamid = '#!::h=' + vhost + ',r=' + app + '/' + stream;
+            }
+            url += '?streamid=' + streamid;
+        } else {
+            url += '/' + app + '/' + stream;
+            if (vhost) {
+                url += '?vhost=' + encodeURIComponent(vhost);
+            }
+        }
+        return url;
     };
-});
+}]);
+
 
 // the sc nav is the nevigator
 scApp.provider("$sc_nav", function(){
@@ -640,7 +759,10 @@ scApp.provider("$sc_server", [function(){
             host: null,
             port: 1985,
             rtmp: [1935],
-            http: [8080],
+			srt: [10080],
+            //http: [8080],
+			//pentru telefon
+			http: [9998], 
             baseurl: function(){
                 return self.schema + "://" + self.host + (self.port === 80? "": ":" + self.port);
             },
