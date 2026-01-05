@@ -685,6 +685,144 @@ if [[ $SRS_USE_SYS_SRT == NO ]]; then
     ret=$?; if [[ $ret -ne 0 ]]; then echo "Build srt-1-fit failed, ret=$ret"; exit $ret; fi
 fi
 
+
+#!/bin/bash
+
+#####################################################################################
+# Build librist
+#####################################################################################
+function write_rist_build_script() {
+    cat << 'END' > ${SRS_OBJS_DIR}/build_rist.sh
+#!/bin/bash
+
+RIST_DIR=${SRS_OBJS_DIR}/rist-src
+RIST_BUILD_DIR=${RIST_DIR}/build
+RIST_INSTALL_DIR=${SRS_OBJS_DIR}/rist
+
+# Clone librist if not exists
+if [[ ! -d ${RIST_DIR} ]]; then
+    echo "Cloning librist..."
+    git clone https://code.videolan.org/rist/librist.git ${RIST_DIR}
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to clone librist"
+        exit 1
+    fi
+fi
+
+cd ${RIST_DIR}
+
+# Checkout stable version
+git checkout master
+git pull
+
+# Create build directory
+mkdir -p ${RIST_BUILD_DIR}
+cd ${RIST_BUILD_DIR}
+
+# Configure with meson
+meson .. \
+    --prefix=${RIST_INSTALL_DIR} \
+    --default-library=static \
+    --buildtype=release \
+    -Dbuilt_tools=false \
+    -Dtest=false
+
+if [[ $? -ne 0 ]]; then
+    echo "meson configuration failed"
+    exit 1
+fi
+
+# Build
+ninja
+if [[ $? -ne 0 ]]; then
+    echo "ninja build failed"
+    exit 1
+fi
+
+# Install
+ninja install
+if [[ $? -ne 0 ]]; then
+    echo "ninja install failed"
+    exit 1
+fi
+
+echo "librist built successfully"
+exit 0
+END
+
+    chmod +x ${SRS_OBJS_DIR}/build_rist.sh
+}
+
+# Function to build RIST
+function build_rist() {
+    echo "Building librist..."
+    
+    # Check if meson and ninja are installed
+    if ! command -v meson &> /dev/null; then
+        echo "Error: meson is not installed. Please install it first:"
+        echo "  Ubuntu/Debian: sudo apt-get install meson"
+        echo "  CentOS/RHEL: sudo yum install meson"
+        echo "  macOS: brew install meson"
+        exit 1
+    fi
+    
+    if ! command -v ninja &> /dev/null; then
+        echo "Error: ninja is not installed. Please install it first:"
+        echo "  Ubuntu/Debian: sudo apt-get install ninja-build"
+        echo "  CentOS/RHEL: sudo yum install ninja-build"
+        echo "  macOS: brew install ninja"
+        exit 1
+    fi
+    
+    # Generate build script
+    write_rist_build_script
+    
+    # Execute build
+    ${SRS_OBJS_DIR}/build_rist.sh
+    
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to build librist"
+        exit 1
+    fi
+    
+    echo "librist build completed"
+}
+
+# Add to main dependency building section
+# ==========================================
+
+# Build RIST if enabled
+if [[ $SRS_RIST == YES ]] && [[ $SRS_SHARED_RIST == NO ]]; then
+    if [[ ! -f ${SRS_OBJS_DIR}/rist/lib/librist.a ]]; then
+        build_rist
+    else
+        echo "librist already built"
+    fi
+fi
+
+# Check for system librist if shared
+if [[ $SRS_RIST == YES ]] && [[ $SRS_SHARED_RIST == YES ]]; then
+    echo "Checking for system librist..."
+    
+    # Check if librist is installed
+    if ! pkg-config --exists librist; then
+        echo "Error: librist not found in system"
+        echo "Please install librist:"
+        echo "  Ubuntu/Debian: sudo apt-get install librist-dev"
+        echo "  CentOS/RHEL: sudo yum install librist-devel"
+        echo "  macOS: brew install librist"
+        echo ""
+        echo "Or build from source:"
+        echo "  git clone https://code.videolan.org/rist/librist.git"
+        echo "  cd librist && mkdir build && cd build"
+        echo "  meson .. && ninja && sudo ninja install"
+        exit 1
+    fi
+    
+    echo "Found system librist: $(pkg-config --modversion librist)"
+fi
+
+
 #####################################################################################
 # build utest code
 #####################################################################################
