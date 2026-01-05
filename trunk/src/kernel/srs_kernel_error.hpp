@@ -401,6 +401,18 @@
     XX(ERROR_SRT_SOURCE_DISCONNECTED, 6011, "SrtSourceDisconnected", "SRT source publisher disconnected")
 
 /**************************************************/
+
+/**************************************************/
+/* SRT protocol error. */
+#define ERROR_RIST_INIT                 2000
+#define ERROR_RIST_PARSE                2001
+#define ERROR_RIST_PEER                 2002
+#define ERROR_RIST_START                2003
+#define ERROR_RIST_RECV                 2004
+#define ERROR_RIST_SEND                 2005
+#define ERROR_RIST_STATS                2006
+/**************************************************/
+
 /* For user-define error. */
 #define SRS_ERRNO_MAP_USER(XX)                                                                  \
     XX(ERROR_USER_START, 9000, "UserStart", "Start error code for user")                        \
